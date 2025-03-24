@@ -1,0 +1,31 @@
+<!--pages/post_create/post_create.wxml-->
+<navigation-bar title="新建帖子" back="{{true}}" color="black" background="#ffffff"></navigation-bar>
+
+<view class="post-create-container">
+  <!-- 用户信息 -->
+  <view class="user-info">
+    <image class="user-avatar" src="{{userInfo.avatarUrl || '/images/post1.jpg'}}" mode="aspectFill"></image>
+    <text class="user-nickname">{{userInfo.nickName || '碳生活用户'}}</text>
+  </view>
+  
+  <!-- 内容编辑区 -->
+  <view class="content-edit-area">
+    <textarea class="content-textarea" placeholder="分享你的低碳生活..." value="{{postContent}}" bindinput="onContentInput" auto-focus maxlength="500"></textarea>
+    
+    <!-- 图片预览区 -->
+    <view class="image-preview-area" wx:if="{{tempImagePath}}">
+      <image class="preview-image" src="{{tempImagePath}}" mode="aspectFill"></image>
+      <view class="remove-image" bindtap="removeImage">×</view>
+    </view>
+  </view>
+  
+  <!-- 底部工具栏 -->
+  <view class="bottom-toolbar">
+    <view class="tool-item" bindtap="chooseImage">
+      <image class="tool-icon" src="/images/post_edit.png" mode="aspectFit"></image>
+      <text class="tool-text">添加图片</text>
+    </view>
+    
+    <button class="publish-button {{postContent ? 'active' : ''}}" bindtap="submitPost" disabled="{{!postContent}}">发布</button>
+  </view>
+</view>

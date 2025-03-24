@@ -1,0 +1,41 @@
+<!--pages/account/account.wxml-->
+<navigation-bar title="我的账户" back="{{false}}" color="white" background="#07C160"></navigation-bar>
+
+<view class="account-container">
+  <!-- 未登录状态 -->
+  <block wx:if="{{!isLoggedIn}}">
+    <view class="login-container">
+      <image class="login-image" src="/images/account_placeholder.png" mode="aspectFit"></image>
+      <view class="login-text">登录后查看您的碳账户信息</view>
+      <button class="login-button" bindtap="login">微信授权登录</button>
+    </view>
+  </block>
+
+  <!-- 已登录状态 -->
+  <block wx:else>
+    <view class="user-info">
+      <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
+      <view class="nickname">{{userInfo.nickName}}</view>
+    </view>
+
+    <view class="stats-container">
+      <view class="stat-card">
+        <view class="stat-value">{{carbonPoints}}</view>
+        <view class="stat-label">碳积分</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-value">{{carbonSaved}}</view>
+        <view class="stat-label">节碳总量(kg)</view>
+      </view>
+    </view>
+
+    <view class="action-list">
+      <view class="action-item">
+        <view class="action-title">设置</view>
+        <view class="action-arrow">></view>
+      </view>
+    </view>
+
+    <button class="logout-button" bindtap="logout">退出登录</button>
+  </block>
+</view>
