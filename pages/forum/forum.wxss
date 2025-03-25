@@ -1,0 +1,125 @@
+/**forum.wxss**/
+page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+}
+
+.forum-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+}
+
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
+}
+
+.forum-container {
+  display: flex;
+  padding: 10rpx;
+  box-sizing: border-box;
+}
+
+.post-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-column {
+  margin-right: 5rpx;
+}
+
+.right-column {
+  margin-left: 5rpx;
+}
+
+.post-card {
+  background-color: var(--card-bg-color);
+  border-radius: 12rpx;
+  overflow: hidden;
+  margin-bottom: 10rpx;
+  box-shadow: var(--shadow);
+}
+
+.post-image {
+  width: 100%;
+  height: 320rpx;
+  display: block;
+}
+
+.post-info {
+  padding: 16rpx;
+}
+
+.post-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  margin-bottom: 8rpx;
+  color: var(--text-color);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.post-content {
+  font-size: 24rpx;
+  color: var(--text-secondary-color);
+  margin-bottom: 12rpx;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.post-stats {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  margin-left: 20rpx;
+}
+
+.icon {
+  width: 32rpx;
+  height: 32rpx;
+  margin-right: 4rpx;
+  filter: var(--icon-tint);
+}
+
+.stat-item text {
+  font-size: 24rpx;
+  color: var(--text-secondary-color);
+}
+
+/* 发帖按钮样式 */
+.create-post-button {
+  position: fixed;
+  bottom: 30rpx;
+  right: 30rpx;
+  width: 100rpx;
+  height: 100rpx;
+  background-color: #07C160;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+
+.add-icon {
+  width: 50rpx;
+  height: 50rpx;
+}
