@@ -1,41 +1,61 @@
 <!--pages/account/account.wxml-->
-<navigation-bar title="我的账户" back="{{false}}" color="white" background="#07C160"></navigation-bar>
+<view class="account-page">
+  <navigation-bar title="我的" color="white" background="#07C160"></navigation-bar>
 
-<view class="account-container">
-  <!-- 未登录状态 -->
-  <block wx:if="{{!isLoggedIn}}">
-    <view class="login-container">
-      <image class="login-image" src="/images/account_placeholder.png" mode="aspectFit"></image>
-      <view class="login-text">登录后查看您的碳账户信息</view>
-      <button class="login-button" bindtap="login">微信授权登录</button>
-    </view>
-  </block>
-
-  <!-- 已登录状态 -->
-  <block wx:else>
-    <view class="user-info">
-      <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
-      <view class="nickname">{{userInfo.nickName}}</view>
-    </view>
-
-    <view class="stats-container">
-      <view class="stat-card">
-        <view class="stat-value">{{carbonPoints}}</view>
-        <view class="stat-label">碳积分</view>
+  <!-- 用户信息区域 -->
+  <view class="user-section">
+    <block wx:if="{{isLogin}}">
+      <view class="user-info">
+        <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
+        <view class="user-detail">
+          <text class="nickname">{{userInfo.nickName}}</text>
+          <text class="user-id">ID: {{userInfo.openid}}</text>
+        </view>
       </view>
-      <view class="stat-card">
-        <view class="stat-value">{{carbonSaved}}</view>
-        <view class="stat-label">节碳总量(kg)</view>
+      <button class="logout-btn" bindtap="handleLogout">退出登录</button>
+    </block>
+    <block wx:else>
+      <view class="login-section">
+        <image class="default-avatar" src="/images/default-avatar.png" mode="aspectFill"></image>
+        <text class="login-tip">登录后体验更多功能</text>
+        <button 
+          class="login-btn" 
+          bindtap="handleLogin"
+          loading="{{loading}}"
+        >立即登录</button>
       </view>
+    </block>
+  </view>
+
+  <!-- 功能列表 -->
+  <view class="feature-list">
+    <view class="feature-item" bindtap="navigateToMyPosts">
+      <view class="feature-content">
+        <image class="feature-icon" src="/images/my-posts.png" mode="aspectFit"></image>
+        <text class="feature-text">我的帖子</text>
+      </view>
+      <image class="arrow-icon" src="/images/arrow-right.png" mode="aspectFit"></image>
     </view>
 
-    <view class="action-list">
-      <view class="action-item">
-        <view class="action-title">设置</view>
-        <view class="action-arrow">></view>
+    <view class="feature-item" bindtap="navigateToFavorites">
+      <view class="feature-content">
+        <image class="feature-icon" src="/images/favorites.png" mode="aspectFit"></image>
+        <text class="feature-text">我的收藏</text>
       </view>
+      <image class="arrow-icon" src="/images/arrow-right.png" mode="aspectFit"></image>
     </view>
 
-    <button class="logout-button" bindtap="logout">退出登录</button>
-  </block>
+    <view class="feature-item" bindtap="navigateToAbout">
+      <view class="feature-content">
+        <image class="feature-icon" src="/images/about.png" mode="aspectFit"></image>
+        <text class="feature-text">关于我们</text>
+      </view>
+      <image class="arrow-icon" src="/images/arrow-right.png" mode="aspectFit"></image>
+    </view>
+  </view>
+
+  <!-- 版本信息 -->
+  <view class="version-info">
+    <text>版本 1.0.0</text>
+  </view>
 </view>

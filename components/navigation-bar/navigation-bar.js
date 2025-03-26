@@ -50,6 +50,7 @@ Component({
       type: Number,
       value: 1
     },
+    
   },
   /**
    * 组件的初始数据
@@ -60,17 +61,16 @@ Component({
   lifetimes: {
     attached() {
       const rect = wx.getMenuButtonBoundingClientRect()
-      wx.getSystemInfo({
-        success: (res) => {
-          const isAndroid = res.platform === 'android'
-          const isDevtools = res.platform === 'devtools'
-          this.setData({
-            ios: !isAndroid,
-            innerPaddingRight: `padding-right: ${res.windowWidth - rect.left}px`,
-            leftWidth: `width: ${res.windowWidth - rect.left }px`,
-            safeAreaTop: isDevtools || isAndroid ? `height: calc(var(--height) + ${res.safeArea.top}px); padding-top: ${res.safeArea.top}px` : ``
-          })
-        }
+      // 使用新的API替代已弃用的wx.getSystemInfo
+      const systemInfo = wx.getSystemInfoSync()
+      const windowInfo = wx.getWindowInfo()
+      const isAndroid = systemInfo.platform === 'android'
+      const isDevtools = systemInfo.platform === 'devtools'
+      this.setData({
+        ios: !isAndroid,
+        innerPaddingRight: `padding-right: ${windowInfo.windowWidth - rect.left}px`,
+        leftWidth: `width: ${windowInfo.windowWidth - rect.left }px`,
+        safeAreaTop: isDevtools || isAndroid ? `height: calc(var(--height) + ${systemInfo.safeArea.top}px); padding-top: ${systemInfo.safeArea.top}px` : ``
       })
     },
   },

@@ -12,7 +12,10 @@
       "outputPath": ""
     },
     "useCompilerPlugins": false,
-    "minifyWXML": true
+    "minifyWXML": true,
+    "miniprogramRoot": "",
+    "libVersion": "2.29.2",
+    "cloudfunctionRoot": "cloudfunctions/"
   },
   "compileType": "miniprogram",
   "simulatorPluginLibVersion": {},
@@ -20,6 +23,7 @@
     "ignore": [],
     "include": []
   },
-  "appid": "wxd668b5545999b397",
-  "editorSetting": {}
+  "appid": "wx5fd68ab60fe600f7",
+  "editorSetting": {},
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }

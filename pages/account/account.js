@@ -1,94 +1,150 @@
 // pages/account/account.js
+const { userDB } = require('../../utils/cloudDB.js')
+
 Page({
   data: {
     userInfo: null,
-    isLoggedIn: false,
-    carbonPoints: 0,
-    carbonSaved: 0.0
+    isLogin: false,
+    loading: false
   },
 
-  onLoad: function() {
-    // 检查用户是否已登录
-    this.checkLoginStatus();
+  onLoad() {
+    this.checkLoginStatus()
+  },
+
+  onShow() {
+    this.checkLoginStatus()
   },
 
   // 检查登录状态
-  checkLoginStatus: function() {
-    const userInfo = wx.getStorageSync('userInfo');
-    if (userInfo) {
-      this.setData({
-        userInfo: userInfo,
-        isLoggedIn: true,
-        // 模拟数据，实际应从服务器获取
-        carbonPoints: Math.floor(Math.random() * 1000),
-        carbonSaved: (Math.random() * 100).toFixed(2)
-      });
+  async checkLoginStatus() {
+    try {
+      const userInfo = wx.getStorageSync('userInfo')
+      if (userInfo) {
+        this.setData({
+          userInfo,
+          isLogin: true
+        })
+      }
+    } catch (error) {
+      console.error('检查登录状态失败：', error)
     }
   },
 
-  // 用户登录
-  login: function() {
-    wx.getUserProfile({
-      desc: '用于完善用户资料',
-      success: (res) => {
-        // 保存用户信息到本地存储
-        wx.setStorageSync('userInfo', res.userInfo);
-        
-        // 更新页面数据
-        this.setData({
-          userInfo: res.userInfo,
-          isLoggedIn: true,
-          // 模拟数据，实际应从服务器获取
-          carbonPoints: Math.floor(Math.random() * 1000),
-          carbonSaved: (Math.random() * 100).toFixed(2)
-        });
-        
-        wx.showToast({
-          title: '登录成功',
-          icon: 'success'
-        });
-      },
-      fail: (err) => {
-        console.error('登录失败', err);
-        wx.showToast({
-          title: '登录失败',
-          icon: 'none'
-        });
+  // 处理用户登录
+  async handleLogin() {
+    if (this.data.loading) return
+    
+    this.setData({ loading: true })
+    
+    try {
+      // 获取用户信息
+      const { result } = await wx.getUserProfile({
+        desc: '用于完善用户资料'
+      })
+
+      // 获取云开发的用户身份信息
+      const { result: cloudIDResult } = await wx.cloud.callFunction({
+        name: 'login'
+      })
+
+      // 构建用户信息
+      const userInfo = {
+        openid: cloudIDResult.openid,
+        nickName: result.userInfo.nickName,
+        avatarUrl: result.userInfo.avatarUrl,
+        gender: result.userInfo.gender,
+        country: result.userInfo.country,
+        province: result.userInfo.province,
+        city: result.userInfo.city,
+        language: result.userInfo.language,
+        updateTime: new Date()
       }
-    });
+
+      // 保存到云数据库
+      await userDB.updateUserInfo(cloudIDResult.openid, userInfo)
+
+      // 保存到本地存储
+      wx.setStorageSync('userInfo', userInfo)
+
+      this.setData({
+        userInfo,
+        isLogin: true
+      })
+
+      wx.showToast({
+        title: '登录成功',
+        icon: 'success'
+      })
+
+    } catch (error) {
+      console.error('登录失败：', error)
+      wx.showToast({
+        title: '登录失败',
+        icon: 'none'
+      })
+    } finally {
+      this.setData({ loading: false })
+    }
   },
 
-  // 用户登出
-  logout: function() {
+  // 退出登录
+  handleLogout() {
     wx.showModal({
       title: '提示',
       content: '确定要退出登录吗？',
       success: (res) => {
         if (res.confirm) {
           // 清除本地存储的用户信息
-          wx.removeStorageSync('userInfo');
+          wx.removeStorageSync('userInfo')
           
-          // 更新页面数据
+          // 更新页面状态
           this.setData({
             userInfo: null,
-            isLoggedIn: false,
-            carbonPoints: 0,
-            carbonSaved: 0.0
-          });
+            isLogin: false
+          })
           
           wx.showToast({
             title: '已退出登录',
             icon: 'success'
-          });
+          })
         }
       }
-    });
+    })
   },
-  
-  // 切换到论坛页面
-  switchToForum: function() {
-    wx.switchTab({
-      url: '/pages/forum/forum'
-    });
+
+  // 跳转到我的帖子
+  navigateToMyPosts() {
+    if (!this.data.isLogin) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'none'
+      })
+      return
+    }
+    wx.navigateTo({
+      url: '/pages/my_posts/my_posts'
+    })
+  },
+
+  // 跳转到我的收藏
+  navigateToFavorites() {
+    if (!this.data.isLogin) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'none'
+      })
+      return
+    }
+    wx.navigateTo({
+      url: '/pages/favorites/favorites'
+    })
+  },
+
+  // 跳转到关于我们
+  navigateToAbout() {
+    wx.navigateTo({
+      url: '/pages/about/about'
+    })
   }
 })

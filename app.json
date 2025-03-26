@@ -3,7 +3,8 @@
     "pages/forum/forum",
     "pages/account/account",
     "pages/post/post",
-    "pages/post_create/post_create"
+    "pages/post_create/post_create",
+    "pages/account_settings/account_settings"
   ],
   "window": {
     "navigationBarTextStyle": "black",
@@ -35,7 +36,6 @@
     "skyline": {
       "defaultDisplayBlock": true,
       "defaultContentBox": true,
-      "tagNameStyleIsolation": "legacy",
       "disableABTest": true,
       "sdkVersionBegin": "3.0.0",
       "sdkVersionEnd": "15.255.255"

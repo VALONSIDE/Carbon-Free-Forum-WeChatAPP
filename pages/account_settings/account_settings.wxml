@@ -1,0 +1,32 @@
+<!--pages/account_settings/account_settings.wxml-->
+<view style="{{pageStyle}}">
+<navigation-bar title="设置" back="{{true}}" color="black" background="#ffffff"></navigation-bar>
+
+<view class="settings-container">
+  <!-- 用户信息 -->
+  <view class="user-info" wx:if="{{userInfo}}">
+    <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
+    <view class="nickname">{{userInfo.nickName}}</view>
+  </view>
+  
+  <!-- 设置列表 -->
+  <view class="settings-list">
+    <view class="settings-item" bindtap="clearCache">
+      <view class="item-left">
+        <view class="item-title">清除缓存</view>
+      </view>
+      <view class="item-right">
+        <view class="item-arrow">></view>
+      </view>
+    </view>
+    <view class="settings-item" bindtap="aboutUs">
+      <view class="item-left">
+        <view class="item-title">关于我们</view>
+      </view>
+      <view class="item-right">
+        <view class="item-arrow">></view>
+      </view>
+    </view>
+  </view>
+</view>
+</view>

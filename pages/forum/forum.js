@@ -1,79 +1,89 @@
 // pages/forum/forum.js
+const { postDB } = require('../../utils/cloudDB.js')
+
+// 默认图片配置
+const DEFAULT_AVATAR = '/images/default-avatar.png'
+const DEFAULT_POST_IMAGE = '/images/default-post.png'
+
 Page({
   data: {
     isEditing: false,
     postContent: '',
     tempImagePath: '',
     userInfo: {},
-    posts: [
-      {
-        id: 1,
-        title: '低碳生活从点滴做起',
-        content: '今天分享一些日常生活中的低碳小技巧...',
-        imageUrl: '/images/post1.jpg',
-        likes: 128,
-        comments: 32,
-        isLiked: false
-      },
-      {
-        id: 2,
-        title: '碳中和政策解读',
-        content: '近期国家发布了一系列碳中和相关政策...',
-        imageUrl: '/images/post2.jpg',
-        likes: 256,
-        comments: 64,
-        isLiked: true
-      },
-      {
-        id: 3,
-        title: '绿色出行方式推荐',
-        content: '分享几种环保又便捷的出行方式...',
-        imageUrl: '/images/post3.jpg',
-        likes: 96,
-        comments: 24,
-        isLiked: false
-      },
-      {
-        id: 4,
-        title: '可持续发展与碳排放',
-        content: '探讨可持续发展与碳排放的关系...',
-        imageUrl: '/images/post4.jpg',
-        likes: 180,
-        comments: 45,
-        isLiked: false
-      },
-      {
-        id: 5,
-        title: '企业碳足迹管理',
-        content: '企业如何有效管理自身的碳足迹...',
-        imageUrl: '/images/post5.jpg',
-        likes: 210,
-        comments: 53,
-        isLiked: true
-      },
-      {
-        id: 6,
-        title: '环保材料创新应用',
-        content: '新型环保材料在日常生活中的应用...',
-        imageUrl: '/images/post6.jpg',
-        likes: 150,
-        comments: 38,
-        isLiked: false
+    refreshing: false,
+    posts: [],
+    page: 1,
+    pageSize: 10,
+    hasMore: true,
+    loading: false
+  },
+  
+  // 图片加载错误处理
+  onImageError: function(e) {
+    const { type, index } = e.currentTarget.dataset
+    const { posts } = this.data
+    const post = {...posts[index]}
+    
+    if (type === 'avatar') {
+      post.authorAvatar = DEFAULT_AVATAR
+    } else if (type === 'post') {
+      post.images = [DEFAULT_POST_IMAGE]
+    }
+    
+    this.setData({
+      [`posts[${index}]`]: post
+    })
+  },
+  
+  // 加载帖子
+  async loadPosts() {
+    if (this.data.loading || !this.data.hasMore) return;
+    
+    try {
+      console.log('开始加载帖子，页码：', this.data.page)
+      this.setData({ loading: true });
+      
+      const posts = await postDB.getPosts(this.data.page, this.data.pageSize);
+      console.log('获取到帖子数据：', posts)
+      
+      if (!posts || posts.length === 0) {
+        console.log('没有更多帖子了')
+        this.setData({
+          hasMore: false,
+          loading: false
+        });
+        return;
       }
-    ]
+      
+      this.setData({
+        posts: this.data.page === 1 ? posts : [...this.data.posts, ...posts],
+        page: this.data.page + 1,
+        hasMore: posts.length === this.data.pageSize,
+        loading: false
+      });
+      
+      console.log('帖子加载完成，当前总数：', this.data.posts.length)
+    } catch (error) {
+      console.error('加载帖子失败：', error);
+      wx.showToast({
+        title: '加载失败',
+        icon: 'none'
+      });
+      this.setData({ loading: false });
+    }
   },
   
   // 点赞或取消点赞
   toggleLike: function(e) {
     const postId = e.currentTarget.dataset.id;
     const posts = this.data.posts;
-    const postIndex = posts.findIndex(post => post.id === postId);
+    const postIndex = posts.findIndex(post => post._id === postId);
     
     if (postIndex !== -1) {
       const isLiked = posts[postIndex].isLiked;
-      // 更新点赞状态和数量
       posts[postIndex].isLiked = !isLiked;
-      posts[postIndex].likes = isLiked ? posts[postIndex].likes - 1 : posts[postIndex].likes + 1;
+      posts[postIndex].likeCount = isLiked ? (posts[postIndex].likeCount || 1) - 1 : (posts[postIndex].likeCount || 0) + 1;
       
       this.setData({
         posts: posts
@@ -96,24 +106,40 @@ Page({
     });
   },
   
-  // 加载更多帖子（示例函数，实际应连接后端API）
-  loadMorePosts: function() {
-    // 这里可以添加加载更多帖子的逻辑
-    // 例如调用后端API获取更多帖子数据
-    console.log('加载更多帖子');
+  // 页面显示时触发
+  onShow: function() {
+    if (!this.data.posts || this.data.posts.length === 0) {
+      this.loadPosts();
+    }
+  },
+  
+  // 下拉刷新
+  onRefresh: async function() {
+    this.setData({
+      refreshing: true,
+      page: 1,
+      posts: [],
+      hasMore: true
+    });
+    
+    await this.loadPosts();
+    this.setData({
+      refreshing: false
+    });
+    
+    wx.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1000
+    });
   },
   
   onLoad: function() {
-    // 获取用户信息
-    wx.getUserInfo({
-      success: (res) => {
-        this.setData({
-          userInfo: res.userInfo
-        });
-      },
-      fail: () => {
-        console.log('获取用户信息失败');
-      }
-    });
+    this.loadPosts();
+  },
+  
+  // 上拉加载更多
+  onReachBottom: function() {
+    this.loadPosts();
   }
 })

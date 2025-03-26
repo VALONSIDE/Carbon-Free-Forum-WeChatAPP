@@ -1,101 +1,164 @@
 // pages/post_create/post_create.js
+const { postDB } = require('../../utils/cloudDB.js')
+
 Page({
   data: {
-    postContent: '',
-    tempImagePath: '',
-    userInfo: {}
+    title: '',
+    content: '',
+    images: [],
+    uploading: false,
+    submitDisabled: true
   },
 
-  onLoad: function() {
-    // 获取用户信息
-    wx.getUserInfo({
-      success: (res) => {
-        this.setData({
-          userInfo: res.userInfo
-        });
-      },
-      fail: () => {
-        console.log('获取用户信息失败');
-      }
-    });
-  },
-  
-  // 监听内容输入
-  onContentInput: function(e) {
+  // 标题输入处理
+  onTitleInput(e) {
     this.setData({
-      postContent: e.detail.value
-    });
+      title: e.detail.value,
+      submitDisabled: !e.detail.value.trim() || !this.data.content.trim()
+    })
   },
-  
+
+  // 内容输入处理
+  onContentInput(e) {
+    this.setData({
+      content: e.detail.value,
+      submitDisabled: !e.detail.value.trim() || !this.data.title.trim()
+    })
+  },
+
   // 选择图片
-  chooseImage: function() {
-    wx.chooseImage({
-      count: 1,
-      sizeType: ['compressed'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
-        this.setData({
-          tempImagePath: res.tempFilePaths[0]
-        });
-      }
-    });
-  },
-  
-  // 移除已选择的图片
-  removeImage: function() {
-    this.setData({
-      tempImagePath: ''
-    });
-  },
-  
-  // 提交发布帖子
-  submitPost: function() {
-    if (!this.data.postContent.trim()) {
-      wx.showToast({
-        title: '请输入内容',
-        icon: 'none'
-      });
-      return;
+  async chooseImage() {
+    try {
+      const res = await wx.chooseMedia({
+        count: 9 - this.data.images.length,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed']
+      })
+
+      const tempFiles = res.tempFiles
+      console.log('选择的图片：', tempFiles)
+
+      this.setData({
+        images: [...this.data.images, ...tempFiles.map(file => file.tempFilePath)]
+      })
+    } catch (error) {
+      console.error('选择图片失败：', error)
     }
-    
-    // 获取页面栈
-    const pages = getCurrentPages();
-    // 获取上一个页面（即forum页面）
-    const forumPage = pages[pages.length - 2];
-    
-    // 生成新帖子ID
-    const newPostId = forumPage.data.posts.length > 0 ? 
-      Math.max(...forumPage.data.posts.map(post => post.id)) + 1 : 1;
-    
-    // 创建新帖子对象
-    const newPost = {
-      id: newPostId,
-      title: this.data.postContent.substring(0, 20) + (this.data.postContent.length > 20 ? '...' : ''),
-      content: this.data.postContent,
-      imageUrl: this.data.tempImagePath || '/images/post' + (Math.floor(Math.random() * 6) + 1) + '.jpg',
-      likes: 0,
-      comments: 0,
-      isLiked: false
-    };
-    
-    // 将新帖子添加到forum页面的帖子列表开头
-    const updatedPosts = [newPost, ...forumPage.data.posts];
-    
-    // 更新forum页面的数据
-    forumPage.setData({
-      posts: updatedPosts
-    });
-    
-    // 显示发布成功提示
-    wx.showToast({
-      title: '发布成功',
-      icon: 'success',
-      success: () => {
-        // 延迟返回，让用户看到提示
-        setTimeout(() => {
-          wx.navigateBack();
-        }, 1500);
+  },
+
+  // 预览图片
+  previewImage(e) {
+    const current = e.currentTarget.dataset.src
+    wx.previewImage({
+      current,
+      urls: this.data.images
+    })
+  },
+
+  // 删除图片
+  deleteImage(e) {
+    const index = e.currentTarget.dataset.index
+    const images = [...this.data.images]
+    images.splice(index, 1)
+    this.setData({ images })
+  },
+
+  // 上传图片到云存储
+  async uploadImages() {
+    if (this.data.images.length === 0) return []
+
+    const uploadTasks = this.data.images.map(async (tempFilePath, index) => {
+      const ext = tempFilePath.split('.').pop()
+      const cloudPath = `post_images/${Date.now()}_${index}.${ext}`
+      
+      try {
+        const res = await wx.cloud.uploadFile({
+          cloudPath,
+          filePath: tempFilePath
+        })
+        console.log('图片上传成功：', res.fileID)
+        return res.fileID
+      } catch (error) {
+        console.error('图片上传失败：', error)
+        throw error
       }
-    });
+    })
+
+    try {
+      return await Promise.all(uploadTasks)
+    } catch (error) {
+      console.error('批量上传图片失败：', error)
+      throw error
+    }
+  },
+
+  // 提交帖子
+  async submitPost() {
+    if (this.data.submitDisabled || this.data.uploading) return
+
+    if (!this.data.title.trim() || !this.data.content.trim()) {
+      wx.showToast({
+        title: '请填写标题和内容',
+        icon: 'none'
+      })
+      return
+    }
+
+    this.setData({ uploading: true })
+    wx.showLoading({ title: '发布中...' })
+
+    try {
+      // 上传图片
+      const imageFileIds = await this.uploadImages()
+      console.log('所有图片上传完成：', imageFileIds)
+
+      // 获取用户信息
+      const userInfo = wx.getStorageSync('userInfo') || {}
+
+      // 创建帖子
+      const postData = {
+        title: this.data.title,
+        content: this.data.content,
+        images: imageFileIds,
+        authorName: userInfo.nickName || '匿名用户',
+        authorAvatar: userInfo.avatarUrl || '/images/default-avatar.png'
+      }
+
+      const postId = await postDB.createPost(postData)
+      console.log('帖子创建成功：', postId)
+
+      wx.hideLoading()
+      wx.showToast({
+        title: '发布成功',
+        icon: 'success'
+      })
+
+      // 返回上一页并刷新列表
+      setTimeout(() => {
+        const pages = getCurrentPages()
+        const prevPage = pages[pages.length - 2]
+        if (prevPage && prevPage.loadPosts) {
+          prevPage.setData({ page: 1, posts: [], hasMore: true })
+          prevPage.loadPosts()
+        }
+        wx.navigateBack()
+      }, 1500)
+
+    } catch (error) {
+      console.error('发布帖子失败：', error)
+      wx.hideLoading()
+      wx.showToast({
+        title: '发布失败',
+        icon: 'none'
+      })
+    } finally {
+      this.setData({ uploading: false })
+    }
+  },
+
+  // 返回上一页
+  onBack() {
+    wx.navigateBack()
   }
 })
