@@ -149,30 +149,70 @@ const userDB = {
   // 更新用户信息
   updateUserInfo: async (openid, userData) => {
     try {
-      const user = await userDB.getUserInfo(openid)
+      // 确保必要的字段存在
+      if (!userData.avatarUrl) {
+        console.error('缺少必要的用户信息字段');
+        throw new Error('用户信息不完整');
+      }
+
+      // 先查询用户是否存在
+      const result = await db.collection('users')
+        .where({
+          openid: openid
+        })
+        .get()
+
+      // 准备要更新的数据
+      const updateData = {
+        openid: openid,
+        avatarUrl: userData.avatarUrl,
+        gender: userData.gender || 0,
+        country: userData.country || '',
+        province: userData.province || '',
+        city: userData.city || '',
+        language: userData.language || '',
+        updateTime: db.serverDate()
+      }
       
-      if (user) {
-        // 更新现有用户信息
-        await db.collection('users')
-          .where({
-            openid: openid
-          })
-          .update({
-            data: {
-              ...userData,
-              updateTime: db.serverDate()
-            }
-          })
+      let finalUserData;
+      if (result.data.length > 0) {
+        // 更新现有用户信息，但保留原有昵称
+        const existingUser = result.data[0];
+        const docId = existingUser._id;
+        
+        // 只在用户第一次创建时或明确要求更新昵称时才更新
+        if (!existingUser.nickName || (userData.nickName && userData.nickName !== '微信用户')) {
+          updateData.nickName = userData.nickName;
+        }
+        
+        await db.collection('users').doc(docId).update({
+          data: updateData
+        })
+
+        // 获取更新后的完整用户信息
+        const updatedResult = await db.collection('users').doc(docId).get()
+        finalUserData = updatedResult.data
       } else {
         // 创建新用户
-        await db.collection('users').add({
-          data: {
-            ...userData,
-            createTime: db.serverDate(),
-            updateTime: db.serverDate()
-          }
+        updateData.createTime = db.serverDate()
+        updateData.nickName = userData.nickName || '微信用户'  // 新用户设置默认昵称
+        
+        const addResult = await db.collection('users').add({
+          data: updateData
         })
+
+        // 获取新创建的用户完整信息
+        const newUserResult = await db.collection('users').doc(addResult._id).get()
+        finalUserData = newUserResult.data
       }
+
+      // 验证返回的数据完整性
+      if (!finalUserData || !finalUserData.avatarUrl) {
+        console.error('返回的用户数据不完整:', finalUserData);
+        throw new Error('用户数据不完整');
+      }
+
+      return finalUserData
     } catch (error) {
       console.error('更新用户信息失败：', error)
       throw error

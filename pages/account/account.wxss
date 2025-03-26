@@ -46,6 +46,27 @@ page {
   color: #999;
 }
 
+.edit-btn {
+  min-width: 80rpx !important;
+  max-width: 140rpx !important;
+  height: 52rpx;
+  line-height: 48rpx;
+  font-size: 24rpx;
+  color: #07C160;
+  background: #fff;
+  border: 2rpx solid #07C160;
+  border-radius: 26rpx;
+  padding: 0 16rpx;
+  margin-left: 20rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-btn::after {
+  border: none;
+}
+
 /* 登录区域 */
 .login-section {
   display: flex;

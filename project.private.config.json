@@ -2,7 +2,7 @@
   "libVersion": "3.7.11",
   "projectname": "Forum_Project",
   "setting": {
-    "urlCheck": true,
+    "urlCheck": false,
     "coverView": true,
     "lazyloadPlaceholderEnable": false,
     "skylineRenderEnable": true,

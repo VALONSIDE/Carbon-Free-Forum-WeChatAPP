@@ -2,7 +2,9 @@
 App({
   globalData: {
     translations: {},
-    envId: 'cloud1-2go4otwj32566b98' // 修改为正确的云环境ID
+    envId: 'cloud1-2go4otwj32566b98', // 修改为正确的云环境ID
+    userInfo: null,
+    isLoggedIn: false
   },
   
   onLaunch: function() {
@@ -14,12 +16,34 @@ App({
         env: this.globalData.envId,
         traceUser: true
       });
+      // 调用登录
+      this.autoLogin();
     }
     
     // 加载语言包
     this.loadLanguage();
     // 设置CSS变量
     this.setCSSVariables();
+  },
+  
+  // 自动登录
+  autoLogin: function() {
+    wx.cloud.callFunction({
+      name: 'login',
+      success: res => {
+        console.log('云函数登录成功：', res);
+        this.globalData.userInfo = res.result;
+        this.globalData.isLoggedIn = true;
+        // 触发登录成功事件
+        if (this.loginReadyCallback) {
+          this.loginReadyCallback(res);
+        }
+      },
+      fail: err => {
+        console.error('云函数登录失败：', err);
+        this.globalData.isLoggedIn = false;
+      }
+    });
   },
   
   // 设置CSS变量
@@ -35,8 +59,6 @@ App({
     //   });
     // }
   },
-  
-
   
   // 加载语言包
   loadLanguage: function() {

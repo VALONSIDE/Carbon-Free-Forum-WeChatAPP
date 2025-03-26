@@ -1,6 +1,6 @@
 <!--pages/account/account.wxml-->
 <view class="account-page">
-  <navigation-bar title="我的" color="white" background="#07C160"></navigation-bar>
+  <navigation-bar title="我的" back="{{false}}" color="white" background="#07C160"></navigation-bar>
 
   <!-- 用户信息区域 -->
   <view class="user-section">
@@ -11,6 +11,7 @@
           <text class="nickname">{{userInfo.nickName}}</text>
           <text class="user-id">ID: {{userInfo.openid}}</text>
         </view>
+        <button class="edit-btn" bindtap="navigateToEdit">编辑资料</button>
       </view>
       <button class="logout-btn" bindtap="handleLogout">退出登录</button>
     </block>
@@ -29,26 +30,10 @@
 
   <!-- 功能列表 -->
   <view class="feature-list">
-    <view class="feature-item" bindtap="navigateToMyPosts">
+    <view class="feature-item" bindtap="navigateToSettings">
       <view class="feature-content">
-        <image class="feature-icon" src="/images/my-posts.png" mode="aspectFit"></image>
-        <text class="feature-text">我的帖子</text>
-      </view>
-      <image class="arrow-icon" src="/images/arrow-right.png" mode="aspectFit"></image>
-    </view>
-
-    <view class="feature-item" bindtap="navigateToFavorites">
-      <view class="feature-content">
-        <image class="feature-icon" src="/images/favorites.png" mode="aspectFit"></image>
-        <text class="feature-text">我的收藏</text>
-      </view>
-      <image class="arrow-icon" src="/images/arrow-right.png" mode="aspectFit"></image>
-    </view>
-
-    <view class="feature-item" bindtap="navigateToAbout">
-      <view class="feature-content">
-        <image class="feature-icon" src="/images/about.png" mode="aspectFit"></image>
-        <text class="feature-text">关于我们</text>
+        <image class="feature-icon" src="/images/settings.png" mode="aspectFit"></image>
+        <text class="feature-text">设置</text>
       </view>
       <image class="arrow-icon" src="/images/arrow-right.png" mode="aspectFit"></image>
     </view>

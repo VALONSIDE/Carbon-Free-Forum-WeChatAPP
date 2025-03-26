@@ -4,7 +4,8 @@
     "pages/account/account",
     "pages/post/post",
     "pages/post_create/post_create",
-    "pages/account_settings/account_settings"
+    "pages/account_settings/account_settings",
+    "pages/user_edit/user_edit"
   ],
   "window": {
     "navigationBarTextStyle": "black",
