@@ -26,24 +26,123 @@ App({
     this.setCSSVariables();
   },
   
-  // 自动登录
+  // 自动获取OpenID
   autoLogin: function() {
+    // 首先检查本地存储的用户信息
+    const storedUserInfo = wx.getStorageSync('userInfo')
+    if (storedUserInfo && storedUserInfo.openid) {
+      this.globalData.userInfo = storedUserInfo
+      this.globalData.isLoggedIn = true
+      if (this.loginReadyCallback) {
+        this.loginReadyCallback({ result: storedUserInfo })
+      }
+      return
+    }
+
     wx.cloud.callFunction({
       name: 'login',
+      data: {
+        isUserInitiated: false
+      },
       success: res => {
-        console.log('云函数登录成功：', res);
-        this.globalData.userInfo = res.result;
-        this.globalData.isLoggedIn = true;
-        // 触发登录成功事件
-        if (this.loginReadyCallback) {
-          this.loginReadyCallback(res);
+        console.log('云函数自动调用成功：', res)
+        if (res.result && !res.result.error) {
+          // 获取本地存储的用户信息
+          const storedUserInfo = wx.getStorageSync('userInfo')
+          
+          if (storedUserInfo && storedUserInfo.openid) {
+            // 如果本地存储有完整的用户信息，使用它
+            this.globalData.userInfo = storedUserInfo
+            this.globalData.isLoggedIn = true
+          } else {
+            // 否则只设置基本的openid信息
+            this.globalData.userInfo = res.result
+            this.globalData.isLoggedIn = false
+          }
+          
+          if (this.loginReadyCallback) {
+            this.loginReadyCallback(res)
+          }
+        } else {
+          console.error('云函数返回错误：', res.result ? res.result.error : '未知错误')
+          this.globalData.isLoggedIn = false
         }
       },
       fail: err => {
-        console.error('云函数登录失败：', err);
-        this.globalData.isLoggedIn = false;
+        console.error('云函数调用失败：', err)
+        this.globalData.isLoggedIn = false
       }
-    });
+    })
+  },
+  
+  // 用户主动登录
+  userLogin: function(callback) {
+    wx.showLoading({
+      title: '登录中...',
+    })
+    
+    wx.cloud.callFunction({
+      name: 'login',
+      data: {
+        isUserInitiated: true
+      },
+      success: res => {
+        console.log('用户主动登录成功：', res)
+        if (res.result && !res.result.error) {
+          // 获取本地存储的用户信息
+          const storedUserInfo = wx.getStorageSync('userInfo')
+          
+          // 合并云函数返回的信息和本地存储的用户信息
+          const updatedUserInfo = {
+            ...storedUserInfo,
+            ...res.result,
+            openid: res.result.openid
+          }
+          
+          // 更新全局状态和本地存储
+          this.globalData.userInfo = updatedUserInfo
+          this.globalData.isLoggedIn = true
+          wx.setStorageSync('userInfo', updatedUserInfo)
+          
+          wx.showToast({
+            title: '登录成功',
+            icon: 'success'
+          })
+          
+          if (callback) {
+            callback(true)
+          }
+        } else {
+          console.error('登录失败：', res.result ? res.result.error : '未知错误')
+          this.globalData.isLoggedIn = false
+          
+          wx.showToast({
+            title: '登录失败',
+            icon: 'none'
+          })
+          
+          if (callback) {
+            callback(false)
+          }
+        }
+      },
+      fail: err => {
+        console.error('登录失败：', err)
+        this.globalData.isLoggedIn = false
+        
+        wx.showToast({
+          title: '登录失败',
+          icon: 'none'
+        })
+        
+        if (callback) {
+          callback(false)
+        }
+      },
+      complete: () => {
+        wx.hideLoading()
+      }
+    })
   },
   
   // 设置CSS变量

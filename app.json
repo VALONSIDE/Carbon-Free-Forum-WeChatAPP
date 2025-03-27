@@ -5,7 +5,8 @@
     "pages/post/post",
     "pages/post_create/post_create",
     "pages/account_settings/account_settings",
-    "pages/user_edit/user_edit"
+    "pages/user_edit/user_edit",
+    "pages/login/login"
   ],
   "window": {
     "navigationBarTextStyle": "black",

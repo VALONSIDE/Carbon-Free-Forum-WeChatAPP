@@ -1,7 +1,22 @@
 // pages/post_create/post_create.js
 const { postDB } = require('../../utils/cloudDB.js')
+const db = wx.cloud.database()
 
 Page({
+  onLoad: function() {
+    // 检查登录状态
+    const app = getApp()
+    if (!app.globalData.isLoggedIn) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再发布帖子',
+        showCancel: false,
+        success: function() {
+          wx.navigateBack()
+        }
+      })
+    }
+  },
   data: {
     title: '',
     content: '',
@@ -97,6 +112,22 @@ Page({
   async submitPost() {
     if (this.data.submitDisabled || this.data.uploading) return
 
+    // 获取当前登录用户信息
+    const app = getApp()
+    const userInfo = wx.getStorageSync('userInfo')
+
+    if (!app.globalData.isLoggedIn || !userInfo || !userInfo.openid) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再发布帖子',
+        showCancel: false,
+        success: function() {
+          wx.navigateBack()
+        }
+      })
+      return
+    }
+
     if (!this.data.title.trim() || !this.data.content.trim()) {
       wx.showToast({
         title: '请填写标题和内容',
@@ -113,16 +144,16 @@ Page({
       const imageFileIds = await this.uploadImages()
       console.log('所有图片上传完成：', imageFileIds)
 
-      // 获取用户信息
-      const userInfo = wx.getStorageSync('userInfo') || {}
-
       // 创建帖子
       const postData = {
-        title: this.data.title,
-        content: this.data.content,
+        title: this.data.title.trim(),
+        content: this.data.content.trim(),
         images: imageFileIds,
-        authorName: userInfo.nickName || '匿名用户',
-        authorAvatar: userInfo.avatarUrl || '/images/default-avatar.png'
+        authorName: userInfo.nickName || '微信用户',
+        authorAvatar: userInfo.avatarUrl || '/images/default-avatar.png',
+        authorId: userInfo.openid,
+        createTime: db.serverDate(),
+        updateTime: db.serverDate()
       }
 
       const postId = await postDB.createPost(postData)
@@ -149,11 +180,12 @@ Page({
       console.error('发布帖子失败：', error)
       wx.hideLoading()
       wx.showToast({
-        title: '发布失败',
+        title: error.message || '发布失败，请重试',
         icon: 'none'
       })
     } finally {
       this.setData({ uploading: false })
+      wx.hideLoading()
     }
   },
 

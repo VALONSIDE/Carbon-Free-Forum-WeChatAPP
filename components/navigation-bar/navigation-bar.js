@@ -82,9 +82,7 @@ Component({
       const animated = this.data.animated
       let displayStyle = ''
       if (animated) {
-        displayStyle = `opacity: ${
-          show ? '1' : '0'
-        };transition:opacity 0.5s;`
+        displayStyle = `opacity: ${show ? '1' : '0'};transition:opacity 0.5s;`
       } else {
         displayStyle = `display: ${show ? '' : 'none'}`
       }
@@ -94,12 +92,21 @@ Component({
     },
     back() {
       const data = this.data
-      if (data.delta) {
-        wx.navigateBack({
-          delta: data.delta
-        })
-      }
       this.triggerEvent('back', { delta: data.delta }, {})
+      
+      // 移除重复的导航逻辑，让页面的handleBack方法处理
+      // 如果页面没有处理back事件，则执行默认导航行为
+      if (!this.getRelationNodes || this.getRelationNodes().length === 0) {
+        if (data.delta) {
+          wx.navigateBack({
+            delta: data.delta,
+            fail: () => {
+              // 如果返回失败，触发一个失败事件
+              this.triggerEvent('backFail', {}, {})
+            }
+          })
+        }
+      }
     }
   },
 })

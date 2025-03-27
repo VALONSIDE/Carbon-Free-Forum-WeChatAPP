@@ -5,14 +5,19 @@ Page({
     userInfo: null,
     tempFilePath: '',
     loading: false,
-    pageStyle: 'min-height: 100vh; background: #f8f8f8;'
+    pageStyle: 'min-height: 100vh; background: #f8f8f8;',
+    originalNickname: '' // 保存原始昵称
   },
 
   onLoad() {
     // 获取当前用户信息
     const userInfo = wx.getStorageSync('userInfo')
     if (userInfo) {
-      this.setData({ userInfo })
+      this.setData({ 
+        userInfo,
+        originalNickname: userInfo.nickName, // 保存原始昵称
+        'userInfo.originalAvatarUrl': userInfo.avatarUrl // 保存原始头像URL
+      })
     }
   },
 
@@ -21,39 +26,33 @@ Page({
     try {
       const { avatarUrl } = e.detail
       
-      // 强制页面刷新，确保头像立即更新
       wx.showLoading({
-        title: '加载中...',
+        title: '处理头像...',
         mask: true
       })
       
-      // 使用微信临时文件系统API确保图片可访问
-      const fs = wx.getFileSystemManager()
-      fs.readFile({
-        filePath: avatarUrl,
-        success: (res) => {
-          this.setData({
-            'userInfo.avatarUrl': avatarUrl,
-            tempFilePath: avatarUrl
-          }, () => {
-            // 在数据设置完成后关闭loading
-            wx.hideLoading()
-          })
-        },
-        fail: (err) => {
-          console.error('读取头像文件失败：', err)
-          // 即使读取失败也尝试直接设置
-          this.setData({
-            'userInfo.avatarUrl': avatarUrl,
-            tempFilePath: avatarUrl
-          })
-          wx.hideLoading()
-        }
+      // 立即上传到云存储
+      const cloudPath = `avatars/${this.data.userInfo.openid}_${Date.now()}.jpg`
+      const uploadResult = await wx.cloud.uploadFile({
+        cloudPath,
+        filePath: avatarUrl
       })
+
+      if (!uploadResult.fileID) {
+        throw new Error('上传头像失败')
+      }
+
+      // 更新显示
+      this.setData({
+        'userInfo.avatarUrl': uploadResult.fileID,
+        tempFilePath: avatarUrl
+      })
+
+      wx.hideLoading()
     } catch (error) {
-      console.error('选择头像失败：', error)
+      console.error('处理头像失败：', error)
       wx.showToast({
-        title: '选择头像失败',
+        title: '处理头像失败',
         icon: 'none'
       })
       wx.hideLoading()
@@ -65,6 +64,20 @@ Page({
     this.setData({
       'userInfo.nickName': e.detail.value
     })
+  },
+
+  // 检查用户名是否可用
+  async checkNicknameAvailable(nickname) {
+    // 如果昵称没有改变，不需要检查
+    if (nickname === this.data.originalNickname) {
+      return true;
+    }
+    try {
+      return await userDB.checkNickname(nickname);
+    } catch (error) {
+      console.error('检查用户名失败：', error);
+      return false;
+    }
   },
 
   // 上传头像到云存储
@@ -87,7 +100,9 @@ Page({
   // 保存用户信息
   async saveUserInfo() {
     if (this.data.loading) return
-    if (!this.data.userInfo.nickName.trim()) {
+    
+    const nickname = this.data.userInfo.nickName.trim()
+    if (!nickname) {
       wx.showToast({
         title: '请输入昵称',
         icon: 'none'
@@ -99,23 +114,51 @@ Page({
     wx.showLoading({ title: '保存中...' })
 
     try {
-      // 如果有新头像，先上传到云存储
-      if (this.data.tempFilePath) {
-        const avatarFileID = await this.uploadAvatar()
-        if (avatarFileID) {
-          this.data.userInfo.avatarUrl = avatarFileID
+      // 只更新需要更新的字段
+      const updatedUserInfo = {}
+      
+      // 如果昵称发生变化，添加到更新对象并检查唯一性
+      if (nickname !== this.data.originalNickname) {
+        // 检查用户名是否可用
+        const isAvailable = await userDB.checkNickname(nickname)
+        if (!isAvailable) {
+          wx.hideLoading()
+          wx.showToast({
+            title: '该用户名已被使用，请选择其他用户名',
+            icon: 'none',
+            duration: 2000
+          })
+          this.setData({ loading: false })
+          return
         }
+        updatedUserInfo.nickName = nickname
+      }
+      
+      // 如果头像发生变化，添加到更新对象
+      if (this.data.userInfo.avatarUrl !== this.data.userInfo.originalAvatarUrl) {
+        updatedUserInfo.avatarUrl = this.data.userInfo.avatarUrl
       }
 
-      // 更新用户信息
-      await userDB.updateUserInfo(this.data.userInfo.openid, {
-        nickName: this.data.userInfo.nickName,
-        avatarUrl: this.data.userInfo.avatarUrl,
-        updateTime: new Date()
-      })
+      // 如果没有任何字段需要更新，直接返回
+      if (Object.keys(updatedUserInfo).length === 0) {
+        wx.showToast({
+          title: '没有修改',
+          icon: 'none'
+        })
+        this.setData({ loading: false })
+        wx.hideLoading()
+        return
+      }
 
-      // 更新本地存储
-      wx.setStorageSync('userInfo', this.data.userInfo)
+      // 更新用户信息到数据库 - 确保使用碳ID作为唯一标识
+      const finalUserInfo = await userDB.updateUserInfo(this.data.userInfo.openid, updatedUserInfo)
+
+      // 更新本地存储和全局状态
+      wx.setStorageSync('userInfo', finalUserInfo)
+      
+      // 更新全局状态
+      const app = getApp()
+      app.globalData.userInfo = finalUserInfo
 
       wx.showToast({
         title: '保存成功',
@@ -130,7 +173,7 @@ Page({
     } catch (error) {
       console.error('保存用户信息失败：', error)
       wx.showToast({
-        title: '保存失败',
+        title: error.message || '保存失败',
         icon: 'none'
       })
     } finally {

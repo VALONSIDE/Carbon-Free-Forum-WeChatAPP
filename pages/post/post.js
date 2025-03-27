@@ -102,6 +102,17 @@ Page({
   async toggleLike() {
     if (!this.data.post) return
     
+    // 检查用户是否已登录
+    const app = getApp()
+    if (!app.globalData.isLoggedIn) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再点赞',
+        showCancel: false
+      })
+      return
+    }
+    
     const post = { ...this.data.post }
     post.isLiked = !post.isLiked
     post.likeCount = post.isLiked ? (post.likeCount || 0) + 1 : (post.likeCount || 1) - 1
@@ -130,11 +141,37 @@ Page({
   async submitComment() {
     if (!this.data.commentContent.trim()) return
     
+    // 检查用户是否已登录
+    const app = getApp()
+    if (!app.globalData.isLoggedIn) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再发表评论',
+        showCancel: false
+      })
+      return
+    }
+    
+    // 获取当前登录用户信息
+    const userInfo = app.globalData.userInfo || {}
+    
+    // 额外验证用户信息的完整性
+    if (!userInfo.openid) {
+      wx.showModal({
+        title: '错误',
+        content: '用户登录信息不完整，无法发表评论',
+        showCancel: false
+      })
+      return
+    }
+    
     const commentData = {
       postId: this.data.post._id,
-      content: this.data.commentContent,
-      authorName: '用户', // 这里应该使用实际的用户信息
-      authorAvatar: DEFAULT_AVATAR
+      content: this.data.commentContent.trim(),
+      authorName: userInfo.nickName || '匿名用户',
+      authorAvatar: userInfo.avatarUrl || DEFAULT_AVATAR,
+      authorId: userInfo.openid,
+      createTime: new Date()
     }
     
     try {

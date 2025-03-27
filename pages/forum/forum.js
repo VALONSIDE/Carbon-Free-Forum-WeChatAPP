@@ -75,19 +75,56 @@ Page({
   },
   
   // 点赞或取消点赞
-  toggleLike: function(e) {
+  toggleLike: async function(e) {
+    // 检查用户是否已登录
+    const app = getApp();
+    if (!app.globalData.isLoggedIn) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再点赞',
+        showCancel: false
+      });
+      return;
+    }
+    
+    // 验证用户信息的完整性
+    if (!app.globalData.userInfo || !app.globalData.userInfo.openid) {
+      wx.showModal({
+        title: '错误',
+        content: '用户登录信息不完整，无法点赞',
+        showCancel: false
+      });
+      return;
+    }
+    
     const postId = e.currentTarget.dataset.id;
     const posts = this.data.posts;
     const postIndex = posts.findIndex(post => post._id === postId);
     
     if (postIndex !== -1) {
       const isLiked = posts[postIndex].isLiked;
-      posts[postIndex].isLiked = !isLiked;
-      posts[postIndex].likeCount = isLiked ? (posts[postIndex].likeCount || 1) - 1 : (posts[postIndex].likeCount || 0) + 1;
+      const newIsLiked = !isLiked;
       
-      this.setData({
-        posts: posts
-      });
+      try {
+        // 先更新数据库，以确保操作成功
+        await postDB.updateLikes(postId, newIsLiked);
+        
+        // 数据库更新成功后，再更新本地状态
+        posts[postIndex].isLiked = newIsLiked;
+        posts[postIndex].likeCount = newIsLiked 
+          ? (posts[postIndex].likeCount || 0) + 1 
+          : (posts[postIndex].likeCount || 1) - 1;
+        
+        this.setData({
+          posts: posts
+        });
+      } catch (error) {
+        console.error('更新点赞状态失败：', error);
+        wx.showToast({
+          title: '操作失败',
+          icon: 'none'
+        });
+      }
     }
   },
   
@@ -101,6 +138,17 @@ Page({
   
   // 跳转到发帖页面
   goToCreatePost: function() {
+    // 检查用户是否已登录
+    const app = getApp();
+    if (!app.globalData.isLoggedIn) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再发布帖子',
+        showCancel: false
+      });
+      return;
+    }
+    
     wx.navigateTo({
       url: '/pages/post_create/post_create'
     });

@@ -5,126 +5,96 @@ Page({
   data: {
     userInfo: null,
     isLogin: false,
-    loading: false
+    loading: false,
+    refreshing: false  // 添加下拉刷新状态
   },
 
   onLoad() {
-    this.checkLoginStatus()
+    this.loadUserInfo()
   },
 
   onShow() {
     this.checkLoginStatus()
   },
+  
+  // 处理返回按钮点击事件
+  back() {
+    wx.navigateBack({
+      delta: 1,
+      fail: () => {
+        // 如果返回失败，跳转到首页
+        wx.switchTab({
+          url: '/pages/forum/forum'
+        })
+      }
+    })
+  },
+  
+  // 添加下拉刷新处理函数
+  async onPullDownRefresh() {
+    try {
+      this.setData({ refreshing: true })
+      await this.loadUserInfo()
+      wx.stopPullDownRefresh()
+    } catch (error) {
+      console.error('刷新失败：', error)
+    } finally {
+      this.setData({ refreshing: false })
+    }
+  },
 
-  // 检查登录状态
-  async checkLoginStatus() {
+  // 加载用户信息
+  async loadUserInfo() {
     try {
       const userInfo = wx.getStorageSync('userInfo')
-      if (userInfo && userInfo.openid) {
-        // 从数据库获取最新的用户信息
-        const dbUserInfo = await userDB.getUserInfo(userInfo.openid)
-        if (dbUserInfo) {
-          // 更新本地存储的用户信息
-          wx.setStorageSync('userInfo', dbUserInfo)
+      if (userInfo) {
+        // 从数据库获取最新用户信息
+        const latestUserInfo = await userDB.getUserInfo(userInfo.openid)
+        if (latestUserInfo) {
+          wx.setStorageSync('userInfo', latestUserInfo)
           this.setData({
-            userInfo: dbUserInfo,
+            userInfo: latestUserInfo,
             isLogin: true
           })
         } else {
-          // 如果服务器上没有找到用户信息，清除本地登录状态
-          console.log('服务器未找到用户信息，退出登录')
-          wx.removeStorageSync('userInfo')
           this.setData({
             userInfo: null,
             isLogin: false
           })
+          wx.removeStorageSync('userInfo')
         }
       }
     } catch (error) {
-      console.error('检查登录状态失败：', error)
-      // 发生错误时，为安全起见也清除登录状态
-      wx.removeStorageSync('userInfo')
+      console.error('加载用户信息失败：', error)
       this.setData({
         userInfo: null,
         isLogin: false
       })
+      wx.removeStorageSync('userInfo')
+    }
+  },
+
+  // 检查登录状态
+  checkLoginStatus() {
+    // 使用全局的登录状态
+    const app = getApp()
+    
+    this.setData({
+      userInfo: app.globalData.userInfo,
+      isLogin: app.globalData.isLoggedIn
+    })
+    
+    // 如果全局已登录，但本地没有用户信息，则同步到本地
+    if (app.globalData.isLoggedIn && app.globalData.userInfo) {
+      wx.setStorageSync('userInfo', app.globalData.userInfo)
     }
   },
 
   // 处理用户登录
-  async handleLogin() {
-    if (this.data.loading) return
-    
-    this.setData({ loading: true })
-    wx.showLoading({ title: '登录中...' })
-    
-    try {
-      // 获取用户信息
-      const userProfileRes = await wx.getUserProfile({
-        desc: '用于完善用户资料'
-      })
-      console.log('获取到的用户信息：', userProfileRes.userInfo)
-
-      // 获取云开发的用户身份信息
-      const cloudLoginRes = await wx.cloud.callFunction({
-        name: 'login'
-      })
-      console.log('云开发登录结果：', cloudLoginRes.result)
-
-      const openid = cloudLoginRes.result.openid
-      if (!openid) {
-        throw new Error('获取用户openid失败')
-      }
-
-      // 构建用户信息对象
-      const userInfo = {
-        openid: openid,
-        nickName: userProfileRes.userInfo.nickName || '微信用户',
-        avatarUrl: userProfileRes.userInfo.avatarUrl || '/images/default-avatar.png',
-        gender: userProfileRes.userInfo.gender || 0,
-        country: userProfileRes.userInfo.country || '',
-        province: userProfileRes.userInfo.province || '',
-        city: userProfileRes.userInfo.city || '',
-        language: userProfileRes.userInfo.language || ''
-      }
-      console.log('准备更新的用户信息：', userInfo)
-
-      // 保存到云数据库
-      const updatedUser = await userDB.updateUserInfo(openid, userInfo)
-      console.log('更新后的用户信息：', updatedUser)
-
-      if (!updatedUser || !updatedUser.nickName || !updatedUser.avatarUrl) {
-        throw new Error('更新用户信息失败')
-      }
-
-      // 保存到本地存储
-      wx.setStorageSync('userInfo', updatedUser)
-
-      this.setData({
-        userInfo: updatedUser,
-        isLogin: true,
-        loading: false
-      })
-
-      wx.hideLoading()
-      wx.showToast({
-        title: '登录成功',
-        icon: 'success'
-      })
-    } catch (error) {
-      console.error('登录失败：', error)
-      wx.removeStorageSync('userInfo')
-      this.setData({
-        userInfo: null,
-        isLogin: false,
-        loading: false
-      })
-      wx.hideLoading()
-      wx.showToast({
-        title: error.message || '登录失败，请重试',
-        icon: 'none'
-      })
-    }
+  handleLogin() {
+    wx.navigateTo({
+      url: '/pages/login/login'
+    })
   },
 
   // 退出登录
@@ -136,6 +106,11 @@ Page({
         if (res.confirm) {
           // 清除本地存储的用户信息
           wx.removeStorageSync('userInfo')
+          
+          // 更新全局状态
+          const app = getApp()
+          app.globalData.isLoggedIn = false
+          app.globalData.userInfo = null
           
           // 更新页面状态
           this.setData({
